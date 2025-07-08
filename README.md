@@ -1,1 +1,1 @@
-# SmartAuction
+# AuctionHub
