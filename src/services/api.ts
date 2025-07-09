@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://voiceagentomnidim-production.up.railway.app';
+const API_BASE_URL ='https://voiceagentomnidim-production.up.railway.app'  ;
 
 export interface Product {
   id: string;
