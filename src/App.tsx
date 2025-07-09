@@ -1,33 +1,109 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { useToast } from './components/ui/Toast';
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { LandingPage } from './pages/LandingPage';
-import { Dashboard } from './pages/Dashboard';
-import { AdminPanel } from './pages/AdminPanel';
-import { AuctionDetail } from './pages/AuctionDetail';
-import { CreateProduct } from './pages/CreateProduct';
-import { CreateAuction } from './pages/CreateAuction';
-import { AdminProductList } from './pages/AdminProductList';
-import { AdminAuctions } from './pages/AdminAuctions';
-import { AdminAuctionDetail } from './pages/AdminAuctonDetail';
+// Pages
+import { Landing } from './pages/Landing';
+import { UserLogin } from './pages/auth/UserLogin';
+import { UserRegister } from './pages/auth/UserRegister';
+import { AdminLogin } from './pages/auth/AdminLogin';
+import { AdminRegister } from './pages/auth/AdminRegister';
+import { UserDashboard } from './pages/user/UserDashboard';
+import { UserAuctions } from './pages/user/UserAuctions';
+import { UserBids } from './pages/user/UserBids';
+import { UserWallet } from './pages/user/UserWallet';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminAuctions } from './pages/admin/AdminAuctions';
+import { AdminProducts } from './pages/admin/AdminProducts';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminReports } from './pages/admin/AdminReports';
+import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminAuctionDetail } from './pages/admin/AdminAuctionDetail';
 function App() {
+  const { ToastContainer } = useToast();
+
   return (
-    <Router>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/admin/create-product" element={<CreateProduct />} />
-          <Route path="/admin/create-auction" element={<CreateAuction />} />
-          <Route path="/auction/:productId" element={<AuctionDetail />} />
-          <Route path="/admin/products" element={<AdminProductList />} />
-          <Route path="/admin/auctions" element={<AdminAuctions />} />
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-slate-50">
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/user/login" element={<UserLogin />} />
+            <Route path="/user/register" element={<UserRegister />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
 
-<Route path="/admin/auction/:auctionId" element={<AdminAuctionDetail />} />
+            {/* Protected user routes */}
+            <Route path="/user/dashboard" element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/user/auctions" element={
+              <ProtectedRoute>
+                <UserAuctions />
+              </ProtectedRoute>
+            } />
+            <Route path="/user/bids" element={
+              <ProtectedRoute>
+                <UserBids />
+              </ProtectedRoute>
+            } />
+            <Route path="/user/wallet" element={
+              <ProtectedRoute>
+                <UserWallet />
+              </ProtectedRoute>
+            } />
 
-        </Routes>
-      </div>
-    </Router>
+            {/* Protected admin routes */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute requireAdmin>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/auctions" element={
+              <ProtectedRoute requireAdmin>
+                <AdminAuctions />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/products" element={
+              <ProtectedRoute requireAdmin>
+                <AdminProducts />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requireAdmin>
+                <AdminUsers />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute requireAdmin>
+                <AdminReports />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute requireAdmin>
+                <AdminSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/auctions/:auctionId" element={
+              <ProtectedRoute requireAdmin>
+                <AdminAuctionDetail />
+              </ProtectedRoute>
+            } />
+
+
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+          
+          <ToastContainer />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
