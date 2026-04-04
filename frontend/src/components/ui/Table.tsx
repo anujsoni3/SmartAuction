@@ -1,31 +1,35 @@
 import React from 'react';
 
-interface Column {
-  key: string;
+interface Column<T extends Record<string, unknown>> {
+  key: keyof T | string;
   label: string;
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (value: unknown, row: T) => React.ReactNode;
 }
 
-interface TableProps {
-  columns: Column[];
-  data: any[];
+interface TableProps<T extends Record<string, unknown>> {
+  columns: Column<T>[];
+  data: T[];
   emptyMessage?: string;
+  density?: 'compact' | 'normal';
 }
 
-export const Table: React.FC<TableProps> = ({
+export function Table<T extends Record<string, unknown>>({
   columns,
   data,
-  emptyMessage = 'No data available'
-}) => {
+  emptyMessage = 'No data available',
+  density = 'compact'
+}: TableProps<T>) {
+  const cellPadding = density === 'compact' ? 'px-3 py-3' : 'px-4 py-4';
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <div className="theme-surface theme-transition overflow-x-auto rounded-2xl scrollbar-thin">
+      <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="theme-border border-b bg-[var(--app-panel)]/60">
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="text-left py-3 px-4 font-medium text-slate-700 bg-slate-50"
+                className={`${cellPadding} theme-muted text-left text-xs font-semibold uppercase tracking-[0.12em]`}
               >
                 {column.label}
               </th>
@@ -37,7 +41,7 @@ export const Table: React.FC<TableProps> = ({
             <tr>
               <td
                 colSpan={columns.length}
-                className="text-center py-8 text-slate-500"
+                className="py-10 text-center text-slate-500"
               >
                 {emptyMessage}
               </td>
@@ -45,14 +49,14 @@ export const Table: React.FC<TableProps> = ({
           ) : (
             data.map((row, index) => (
               <tr
-                key={index}
-                className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                key={(row.id as string | number | undefined) ?? index}
+                className="theme-border border-b transition-colors hover:bg-[var(--app-panel)]/45"
               >
                 {columns.map((column) => (
-                  <td key={column.key} className="py-3 px-4">
+                  <td key={String(column.key)} className={`${cellPadding} theme-text align-top`}>
                     {column.render
-                      ? column.render(row[column.key], row)
-                      : row[column.key] || '-'}
+                      ? column.render(row[column.key as keyof T], row)
+                      : String(row[column.key as keyof T] ?? '-')}
                   </td>
                 ))}
               </tr>
@@ -62,4 +66,4 @@ export const Table: React.FC<TableProps> = ({
       </table>
     </div>
   );
-};
+}

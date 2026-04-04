@@ -13,12 +13,12 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const paddingClasses = {
     sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8'
+    md: 'p-5',
+    lg: 'p-6'
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-slate-200 ${paddingClasses[padding]} ${className}`}>
+    <div className={`theme-surface theme-border theme-transition rounded-2xl border shadow-card ${paddingClasses[padding]} ${className}`}>
       {children}
     </div>
   );

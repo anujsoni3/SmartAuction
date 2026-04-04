@@ -27,19 +27,19 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
-        <div className={`relative bg-white rounded-xl shadow-xl ${sizeClasses[size]} w-full`}>
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
+        <div className={`theme-surface theme-border theme-transition relative w-full ${sizeClasses[size]} max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl border shadow-soft`}>
+          <div className="theme-border flex items-center justify-between border-b px-5 py-4 sm:px-6">
+            <h3 className="theme-text text-lg font-semibold tracking-tight">{title}</h3>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
+              className="theme-transition rounded-full p-2 theme-muted hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="p-6">
+          <div className="max-h-[calc(100vh-8rem)] overflow-y-auto px-5 py-5 sm:px-6">
             {children}
           </div>
         </div>

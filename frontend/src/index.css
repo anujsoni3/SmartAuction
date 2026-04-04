@@ -1,3 +1,170 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root[data-theme='light'] {
+	--app-bg: #fff8f0;
+	--app-surface: #fffdf8;
+	--app-panel: #f2e9df;
+	--app-border: rgba(75, 46, 43, 0.14);
+	--app-text: #4b2e2b;
+	--app-muted: #8c5a3c;
+	--app-primary: #c08552;
+	--app-primary-strong: #8c5a3c;
+	--app-on-primary: #fff8f0;
+}
+
+:root[data-theme='dark'] {
+	--app-bg: #181c14;
+	--app-surface: #23281f;
+	--app-panel: #3c3d37;
+	--app-border: rgba(236, 223, 204, 0.16);
+	--app-text: #ecdfcc;
+	--app-muted: #c3b69f;
+	--app-primary: #697565;
+	--app-primary-strong: #7d8d79;
+	--app-on-primary: #ecdfcc;
+}
+
+@layer base {
+	html {
+		@apply antialiased;
+	}
+
+	body {
+		@apply min-h-screen;
+		background-color: var(--app-bg);
+		color: var(--app-text);
+		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	}
+
+	#root {
+		min-height: 100vh;
+	}
+
+	::selection {
+		background: rgba(37, 99, 235, 0.18);
+		color: #0f172a;
+	}
+}
+
+@layer utilities {
+	.theme-bg {
+		background-color: var(--app-bg);
+		color: var(--app-text);
+	}
+
+	.theme-surface {
+		background-color: var(--app-surface);
+		color: var(--app-text);
+	}
+
+	.theme-panel {
+		background-color: var(--app-panel);
+	}
+
+	.theme-border {
+		border-color: var(--app-border);
+	}
+
+	.theme-text {
+		color: var(--app-text);
+	}
+
+	.theme-muted {
+		color: var(--app-muted);
+	}
+
+	.theme-transition {
+		transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+	}
+
+	[data-theme='dark'] .bg-white {
+		background-color: var(--app-surface) !important;
+	}
+
+	[data-theme='dark'] .bg-slate-50,
+	[data-theme='dark'] .bg-slate-100,
+	[data-theme='dark'] .bg-stone-50,
+	[data-theme='dark'] .bg-amber-50,
+	[data-theme='dark'] .bg-orange-50,
+	[data-theme='dark'] .bg-red-50 {
+		background-color: color-mix(in srgb, var(--app-panel) 82%, black) !important;
+	}
+
+	[data-theme='dark'] .text-slate-900,
+	[data-theme='dark'] .text-slate-800,
+	[data-theme='dark'] .text-slate-700,
+	[data-theme='dark'] .text-slate-600,
+	[data-theme='dark'] .text-slate-500,
+	[data-theme='dark'] .text-gray-900,
+	[data-theme='dark'] .text-gray-800,
+	[data-theme='dark'] .text-gray-700,
+	[data-theme='dark'] .text-gray-600,
+	[data-theme='dark'] .text-gray-500 {
+		color: var(--app-text) !important;
+	}
+
+	[data-theme='dark'] .border-slate-200,
+	[data-theme='dark'] .border-slate-300,
+	[data-theme='dark'] .border-gray-200,
+	[data-theme='dark'] .border-gray-300 {
+		border-color: var(--app-border) !important;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar {
+		height: 8px;
+		width: 8px;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-thumb {
+		background: rgba(148, 163, 184, 0.55);
+		border-radius: 9999px;
+	}
+}
+
+@layer base {
+	html {
+		scroll-behavior: smooth;
+	}
+
+	body {
+		@apply bg-background text-slate-900 antialiased;
+		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	}
+
+	#root {
+		min-height: 100vh;
+	}
+
+	::selection {
+		@apply bg-brand-200 text-brand-900;
+	}
+}
+
+@layer utilities {
+	.scrollbar-thin {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.scrollbar-thin::-webkit-scrollbar-thumb {
+		background-color: rgba(148, 163, 184, 0.55);
+		border-radius: 9999px;
+		border: 2px solid transparent;
+		background-clip: content-box;
+	}
+}

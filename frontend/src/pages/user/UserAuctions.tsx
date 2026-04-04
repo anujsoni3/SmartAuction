@@ -1,47 +1,44 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { MetricCard } from '../../components/ui/MetricCard';
 import { useToast } from '../../components/ui/Toast';
 import { auctionService, Auction, Product } from '../../services/auctionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
-
 import {
-  Gavel,
   Clock,
-  Search,
-  Home,
-  Wallet,
   Eye,
+  Gavel,
+  Home,
+  Search,
   Timer,
   TrendingUp,
+  Wallet,
+  ArrowRight,
+  BadgeCheck,
 } from 'lucide-react';
 
-/* Sidebar config */
 const userSidebarItems = [
-  { path: '/user/dashboard', label: 'Dashboard', icon: <Home className="h-5 w-5" /> },
-  { path: '/user/auctions', label: 'Browse Auctions', icon: <Search className="h-5 w-5" /> },
-  { path: '/user/bids', label: 'My Bids', icon: <Gavel className="h-5 w-5" /> },
-  { path: '/user/wallet', label: 'Wallet', icon: <Wallet className="h-5 w-5" /> },
+  { path: '/user/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
+  { path: '/user/auctions', label: 'Browse Auctions', icon: <Search className="h-4 w-4" /> },
+  { path: '/user/bids', label: 'My Bids', icon: <Gavel className="h-4 w-4" /> },
+  { path: '/user/wallet', label: 'Wallet', icon: <Wallet className="h-4 w-4" /> },
 ];
 
 export const UserAuctions: React.FC = () => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-
-  const [productBids, setProductBids] = useState<Record<string, any>>({});
+  const [productBids, setProductBids] = useState<Record<string, { highest_bid?: number }>>({});
   const [timeLeft, setTimeLeft] = useState<Record<string, number>>({});
-
   const [registeredAuctions, setRegisteredAuctions] = useState<Set<string>>(new Set());
-
   const [showBidModal, setShowBidModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [bidAmount, setBidAmount] = useState('');
@@ -49,11 +46,9 @@ export const UserAuctions: React.FC = () => {
 
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
-  const myId = String(user?.id || '');
 
-  // 📦 Load all auctions + my registered ones
   useEffect(() => {
-    (async () => {
+    const loadAuctions = async () => {
       try {
         const [allAuctions, myAuctionRes] = await Promise.all([
           auctionService.getAuctions(),
@@ -61,61 +56,77 @@ export const UserAuctions: React.FC = () => {
         ]);
 
         setAuctions(allAuctions);
-
-        const myAuctionIds = new Set<string>(
-          (myAuctionRes?.user_details?.auctions || []).map(String)
-        );
-        setRegisteredAuctions(myAuctionIds);
-
+        setRegisteredAuctions(new Set((myAuctionRes?.user_details?.auctions || []).map(String)));
         setTimeLeft(
-          allAuctions.reduce<Record<string, number>>((acc, a) => {
-            acc[a.id] = getSecondsLeft(a.valid_until);
+          allAuctions.reduce<Record<string, number>>((acc, auction) => {
+            acc[auction.id] = getSecondsLeft(auction.valid_until);
             return acc;
           }, {})
         );
-      } catch (err) {
+      } catch {
         showError('Failed to load auctions');
       } finally {
         setLoading(false);
       }
-    })();
+    };
+
+    void loadAuctions();
   }, [showError]);
 
   useEffect(() => {
     if (!auctions.length) return;
-    const id = setInterval(() => {
+
+    const timer = window.setInterval(() => {
       const now = Date.now();
-      setTimeLeft(prev =>
-        auctions.reduce<Record<string, number>>((acc, a) => {
-          acc[a.id] = Math.max(0, Math.floor((new Date(a.valid_until).getTime() - now) / 1000));
+      setTimeLeft(
+        auctions.reduce<Record<string, number>>((acc, auction) => {
+          acc[auction.id] = Math.max(0, Math.floor((new Date(auction.valid_until).getTime() - now) / 1000));
           return acc;
         }, {})
       );
     }, 1000);
-    return () => clearInterval(id);
+
+    return () => window.clearInterval(timer);
   }, [auctions]);
+
+  const filteredAuctions = useMemo(() => {
+    return auctions.filter((auction) => {
+      const query = searchTerm.toLowerCase();
+      return auction.name.toLowerCase().includes(query) || auction.id.toLowerCase().includes(query);
+    });
+  }, [auctions, searchTerm]);
+
+  const activeCount = useMemo(
+    () => auctions.filter((auction) => getSecondsLeft(auction.valid_until) > 0).length,
+    [auctions]
+  );
+
+  const endingSoonCount = useMemo(
+    () => auctions.filter((auction) => {
+      const diff = new Date(auction.valid_until).getTime() - Date.now();
+      return diff > 0 && diff < 86_400_000;
+    }).length,
+    [auctions]
+  );
 
   const handleViewProducts = async (auction: Auction) => {
     setSelectedAuction(auction);
-    await loadAuctionProducts(auction.id);
-  };
-
-  const loadAuctionProducts = async (auctionId: string) => {
     setProductsLoading(true);
     try {
-      const data = await auctionService.getAuctionProducts(auctionId);
+      const data = await auctionService.getAuctionProducts(auction.id);
       setProducts(data);
 
       const bids = await Promise.all(
-        data.map(async p => {
+        data.map(async (product) => {
           try {
-            const b = await auctionService.getHighestBid(p.id);
-            return [p.id, b] as const;
+            const highest = await auctionService.getHighestBid(product.id);
+            return [product.id, highest] as const;
           } catch {
-            return [p.id, { highest_bid: 0 }] as const;
+            return [product.id, { highest_bid: 0 }] as const;
           }
         })
       );
+
       setProductBids(Object.fromEntries(bids));
     } catch {
       showError('Failed to load products');
@@ -127,16 +138,11 @@ export const UserAuctions: React.FC = () => {
   const handleRegisterForAuction = async (auctionId: string) => {
     try {
       await auctionService.registerForAuction(auctionId);
-      showSuccess('Successfully registered for auction!');
-      setRegisteredAuctions(prev => new Set(prev).add(auctionId));
-    } catch (err: any) {
-      showError(err.response?.data?.error || 'Failed to register');
+      showSuccess('Successfully registered for auction');
+      setRegisteredAuctions((prev) => new Set(prev).add(auctionId));
+    } catch {
+      showError('Failed to register');
     }
-  };
-
-  const openBidModal = (product: Product) => {
-    setSelectedProduct(product);
-    setShowBidModal(true);
   };
 
   const handlePlaceBid = async () => {
@@ -144,9 +150,11 @@ export const UserAuctions: React.FC = () => {
       showError('Please enter a valid bid amount');
       return;
     }
-    const amount = parseFloat(bidAmount);
+
+    const amount = Number.parseFloat(bidAmount);
     const currentHighest = productBids[selectedProduct.id]?.highest_bid ?? 0;
-    if (amount <= currentHighest) {
+
+    if (Number.isNaN(amount) || amount <= currentHighest) {
       showError(`Bid must be higher than ₹${currentHighest}`);
       return;
     }
@@ -158,41 +166,28 @@ export const UserAuctions: React.FC = () => {
         bid_amount: amount,
         user_id: user.username,
       });
-      showSuccess('Bid placed successfully!');
+      showSuccess('Bid placed successfully');
       setShowBidModal(false);
       setBidAmount('');
       setSelectedProduct(null);
-      if (selectedAuction) await loadAuctionProducts(selectedAuction.id);
-    } catch (err: any) {
-      showError(err.response?.data?.message || 'Failed to place bid');
+      if (selectedAuction) {
+        await handleViewProducts(selectedAuction);
+      }
+    } catch {
+      showError('Failed to place bid');
     } finally {
       setBidLoading(false);
     }
   };
 
-  const getSecondsLeft = (iso: string) =>
-    Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
-
-  const formatTimeLeft = (sec: number) => {
-    if (sec <= 0) return 'Ended';
-    const d = Math.floor(sec / 86400);
-    const h = Math.floor((sec % 86400) / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    if (d) return `${d}d ${h}h ${m}m`;
-    if (h) return `${h}h ${m}m`;
-    return `${m}m`;
-  };
-
-  const filteredAuctions = auctions.filter(a =>
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (loading) {
     return (
       <Layout title="Browse Auctions" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="flex min-h-[55vh] items-center justify-center">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-card">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
+            <span className="text-sm font-medium text-slate-600">Loading auctions...</span>
+          </div>
         </div>
       </Layout>
     );
@@ -201,83 +196,104 @@ export const UserAuctions: React.FC = () => {
   return (
     <Layout title="Browse Auctions" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
       <div className="space-y-6">
-        <Card>
-          <div className="flex items-center space-x-4">
-            <Input
-              placeholder="Search auctions by name or ID…"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-            <Button variant="secondary">
-              <Search className="h-4 w-4 mr-2" />
-              Search
+        <Card padding="lg" className="space-y-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-2xl space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Live auction discovery
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Browse auctions with a cleaner, faster workflow</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Search active auctions, inspect products, and register before bidding.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[44rem] xl:grid-cols-3">
+              <MetricCard label="Active" value={activeCount} icon={Gavel} tone="brand" />
+              <MetricCard label="Ending Soon" value={endingSoonCount} icon={Timer} tone="warning" />
+              <MetricCard label="Registered" value={registeredAuctions.size} icon={Eye} tone="success" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:flex-row">
+            <div className="flex-1">
+              <Input
+                placeholder="Search auctions by name or ID"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
+            <Button variant="secondary" className="shrink-0" onClick={() => setSearchTerm('')}>
+              <Search className="h-4 w-4" />
+              Clear
             </Button>
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-xl font-semibold text-slate-900">Active Auctions</h3>
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h3 className="text-lg font-semibold tracking-tight text-slate-900">Active Auctions</h3>
+                <p className="text-sm text-slate-500">{filteredAuctions.length} auction{filteredAuctions.length === 1 ? '' : 's'} visible</p>
+              </div>
+            </div>
 
             {filteredAuctions.length === 0 ? (
-              <Card>
-                <p className="text-center text-slate-500 py-8">No auctions found</p>
+              <Card padding="lg">
+                <EmptyState title="No auctions found" description="Try a different search term or clear the filter." />
               </Card>
             ) : (
-              <div className="space-y-4">
-                {filteredAuctions.map(a => {
-                  const secs = timeLeft[a.id] ?? getSecondsLeft(a.valid_until);
-                  const ended = secs <= 0;
-                  const registered = registeredAuctions.has(a.id);
+              <div className="grid gap-4">
+                {filteredAuctions.map((auction) => {
+                  const secondsLeft = timeLeft[auction.id] ?? getSecondsLeft(auction.valid_until);
+                  const ended = secondsLeft <= 0;
+                  const registered = registeredAuctions.has(auction.id);
 
                   return (
-                    <Card key={a.id} className="hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-slate-900 text-lg">{a.name}</h4>
-                          <p className="text-sm text-slate-600 mb-2">ID: {a.id}</p>
-                          <div className="flex items-center text-sm text-slate-500">
-                            <Clock className="h-4 w-4 mr-1" />
-                            <span>Ends: {new Date(a.valid_until).toLocaleString()}</span>
+                    <Card key={auction.id} padding="lg" className="transition hover:-translate-y-0.5 hover:shadow-soft">
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <h4 className="truncate text-lg font-semibold tracking-tight text-slate-900">{auction.name}</h4>
+                              <p className="mt-1 text-sm text-slate-500">Auction ID: {auction.id}</p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${ended ? 'bg-rose-50 text-rose-700' : secondsLeft < 3600 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                              {ended ? 'Ended' : 'Live'}
+                            </span>
                           </div>
-                          <div className="flex items-center mt-1 text-sm">
-                            <Timer className="h-4 w-4 mr-1 text-amber-600" />
-                            <span className={`font-medium ${ended ? 'text-red-600' : 'text-amber-600'}`}>
-                              {formatTimeLeft(secs)}
+
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                              <Clock className="h-3.5 w-3.5" />
+                              Ends {new Date(auction.valid_until).toLocaleString()}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                              <Timer className="h-3.5 w-3.5" />
+                              {formatTimeLeft(secondsLeft)} remaining
                             </span>
                           </div>
                         </div>
 
-                        <div className="text-right space-y-2">
-                          <div className="text-sm">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              ended
-                                ? 'bg-red-100 text-red-800'
-                                : secs < 3600
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {ended ? 'Ended' : 'Active'}
+                        <div className="flex flex-col gap-3 lg:min-w-[12rem] lg:items-end">
+                          <Button size="sm" variant="secondary" onClick={() => handleViewProducts(auction)} className="w-full justify-center lg:w-auto">
+                            <Eye className="h-4 w-4" />
+                            View Products
+                          </Button>
+                          {registered ? (
+                            <span className="inline-flex items-center justify-center rounded-full bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
+                              Registered
                             </span>
-                          </div>
-
-                          <div className="space-x-2">
-                            <Button size="sm" variant="secondary" onClick={() => handleViewProducts(a)}>
-                              <Eye className="h-4 w-4 mr-1" />
-                              View Products
+                          ) : (
+                            <Button size="sm" onClick={() => handleRegisterForAuction(auction.id)} disabled={ended} className="w-full justify-center lg:w-auto">
+                              Register
+                              <ArrowRight className="h-4 w-4" />
                             </Button>
-
-                            {registered ? (
-                              <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs inline-block">
-                                Registered
-                              </span>
-                            ) : (
-                              <Button size="sm" onClick={() => handleRegisterForAuction(a.id)} disabled={ended}>
-                                Register
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -287,57 +303,64 @@ export const UserAuctions: React.FC = () => {
             )}
           </div>
 
-          <div>
-            <h3 className="text-xl font-semibold text-slate-900 mb-4">
-              {selectedAuction ? `${selectedAuction.name} Products` : 'Select an Auction'}
-            </h3>
+          <div className="lg:sticky lg:top-24 self-start">
+            <Card padding="lg" className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">
+                    {selectedAuction ? selectedAuction.name : 'Select an auction'}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">Product list and bid actions appear here.</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+                  <Gavel className="h-5 w-5" />
+                </div>
+              </div>
 
-            <Card>
               {!selectedAuction ? (
-                <EmptyState />
+                <EmptyState title="Nothing selected yet" description="Choose an auction to view its products and bid options." />
               ) : productsLoading ? (
                 <Loader />
               ) : products.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">No products in this auction</p>
+                <EmptyState title="No products in this auction" description="This auction does not have any active products yet." />
               ) : (
-                <div className="space-y-4">
-                  {products.map(p => {
-                    const registered = registeredAuctions.has(selectedAuction!.id);
-                    const isEnded = timeLeft[selectedAuction!.id] <= 0;
+                <div className="space-y-3">
+                  {products.map((product) => {
+                    const currentHighest = productBids[product.id]?.highest_bid ?? 0;
+                    const registered = registeredAuctions.has(selectedAuction.id);
+                    const isEnded = (timeLeft[selectedAuction.id] ?? 0) <= 0;
 
                     return (
-                      <div key={p.id} className="p-4 bg-slate-50 rounded-lg border hover:bg-slate-100 transition-colors">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h5 className="font-medium text-slate-900">{p.name}</h5>
-                            <p className="text-sm text-slate-600">ID: {p.id}</p>
-                            {p.description && (
-                              <p className="text-sm text-slate-500 mt-1">{p.description}</p>
-                            )}
+                      <div key={product.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 transition hover:border-brand-200 hover:bg-white">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h4 className="truncate font-semibold text-slate-900">{product.name}</h4>
+                            <p className="mt-1 text-xs text-slate-500">ID: {product.id}</p>
+                            {product.description ? <p className="mt-2 text-sm leading-6 text-slate-600">{product.description}</p> : null}
                           </div>
-
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            p.status === 'sold'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {p.status === 'sold' ? 'Sold' : 'Available'}
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${product.status === 'sold' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {product.status === 'sold' ? 'Sold' : 'Available'}
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center text-sm text-slate-600">
-                            <TrendingUp className="h-4 w-4 mr-1" />
-                            <span>Highest: ₹{productBids[p.id]?.highest_bid || 0}</span>
+                        <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4">
+                          <div className="text-sm text-slate-600">
+                            <span className="font-medium text-slate-900">Highest bid:</span> ₹{currentHighest.toLocaleString()}
                           </div>
 
                           {registered ? (
-                            <Button size="sm" onClick={() => openBidModal(p)} disabled={p.status === 'sold' || isEnded}>
-                              <Gavel className="h-4 w-4 mr-1" />
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setShowBidModal(true);
+                              }}
+                              disabled={product.status === 'sold' || isEnded}
+                            >
                               Place Bid
                             </Button>
                           ) : (
-                            <span className="text-xs text-slate-500 italic">Register to bid</span>
+                            <span className="text-xs font-medium text-slate-500">Register to bid</span>
                           )}
                         </div>
                       </div>
@@ -357,28 +380,27 @@ export const UserAuctions: React.FC = () => {
           setBidAmount('');
           setSelectedProduct(null);
         }}
-        title={`Place Bid on ${selectedProduct?.name}`}
+        title={`Place Bid on ${selectedProduct?.name ?? 'Product'}`}
       >
-        <div className="space-y-4">
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h4 className="font-medium text-slate-900">{selectedProduct?.name}</h4>
-            <p className="text-sm text-slate-600">ID: {selectedProduct?.id}</p>
-            <p className="text-sm text-slate-600 mt-2">
-              Current Highest Bid: ₹
-              {selectedProduct ? productBids[selectedProduct.id]?.highest_bid ?? 0 : 0}
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="font-semibold text-slate-900">{selectedProduct?.name}</h4>
+            <p className="mt-1 text-sm text-slate-500">ID: {selectedProduct?.id}</p>
+            <p className="mt-3 text-sm text-slate-600">
+              Current highest bid: <span className="font-semibold text-slate-900">₹{selectedProduct ? (productBids[selectedProduct.id]?.highest_bid ?? 0).toLocaleString() : '0'}</span>
             </p>
           </div>
 
           <Input
-            label="Your Bid Amount (₹)"
+            label="Your bid amount"
             type="number"
             value={bidAmount}
-            onChange={e => setBidAmount(e.target.value)}
-            placeholder="Enter your bid amount"
+            onChange={(event) => setBidAmount(event.target.value)}
+            placeholder="Enter bid amount"
             min={selectedProduct ? (productBids[selectedProduct.id]?.highest_bid ?? 0) + 1 : 1}
           />
 
-          <div className="flex space-x-3">
+          <div className="flex gap-3">
             <Button
               variant="secondary"
               onClick={() => {
@@ -400,15 +422,30 @@ export const UserAuctions: React.FC = () => {
   );
 };
 
-const EmptyState = () => (
-  <div className="text-center py-8">
-    <Gavel className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-    <p className="text-slate-500">Click “View Products” on an auction to see its items</p>
+const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+      <Gavel className="h-6 w-6" />
+    </div>
+    <h4 className="mt-4 text-base font-semibold text-slate-900">{title}</h4>
+    <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
   </div>
 );
 
 const Loader = () => (
-  <div className="flex items-center justify-center py-8">
-    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+  <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
   </div>
 );
+
+const getSecondsLeft = (iso: string) => Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
+
+const formatTimeLeft = (seconds: number) => {
+  if (seconds <= 0) return 'Ended';
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days) return `${days}d ${hours}h ${minutes}m`;
+  if (hours) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};

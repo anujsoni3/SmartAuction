@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useToast } from './components/ui/Toast';
+import { ThemeToggle } from './components/ui/ThemeToggle';
 
 // Pages
 import { Landing } from './pages/Landing';
@@ -25,9 +27,11 @@ function App() {
   const { ToastContainer } = useToast();
 
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-slate-50">
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <div className="theme-bg theme-transition min-h-screen">
+            <ThemeToggle />
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
@@ -99,11 +103,12 @@ function App() {
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-          
-          <ToastContainer />
-        </div>
-      </Router>
-    </AuthProvider>
+
+            <ToastContainer />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

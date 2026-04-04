@@ -243,7 +243,7 @@ export const AdminProducts: React.FC = () => {
   /* ------------- loading ------------- */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50">
+      <div className="theme-bg theme-transition min-h-screen">
         <Layout title="Products" sidebarItems={adminSidebar} sidebarTitle="Admin Portal">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-500 border-t-transparent shadow-lg" />
@@ -255,7 +255,7 @@ export const AdminProducts: React.FC = () => {
 
   /* ------------- render ------------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50">
+    <div className="theme-bg theme-transition min-h-screen">
       <Layout title="Products" sidebarItems={adminSidebar} sidebarTitle="Admin Portal">
         <div className="space-y-8">
           {/* Success Effect Overlay */}

@@ -205,7 +205,7 @@ export const AdminDashboard: React.FC = () => {
    *  Render
    * ---------------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50">
+    <div className="theme-bg theme-transition min-h-screen">
       <Layout title="Admin Dashboard" sidebarItems={adminSidebarItems} sidebarTitle="Admin Portal">
         <div className="space-y-8">
           {/* Success Effect Overlay */}

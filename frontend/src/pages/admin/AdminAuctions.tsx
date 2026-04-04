@@ -236,7 +236,7 @@ export const AdminAuctions: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
+      <div className="theme-bg theme-transition min-h-screen">
         <Layout title="Manage Auctions" sidebarItems={adminSidebarItems} sidebarTitle="Admin Portal">
           <div className="flex items-center justify-center h-64">
             <div className="relative">
@@ -250,7 +250,7 @@ export const AdminAuctions: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
+    <div className="theme-bg theme-transition min-h-screen">
       <Layout title="Manage Auctions" sidebarItems={adminSidebarItems} sidebarTitle="Admin Portal">
         <div className="space-y-8">
           {/* Header */}
