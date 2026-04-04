@@ -90,6 +90,7 @@
 - **Languages**: HTML, CSS, JavaScript, React
 - **Admin Panel**: Full dashboard for managing auctions, products, bids, reports  
 - **Deployment**: Render (backend) + Vercel (Frontend)
+<<<<<<< HEAD
 
 ---
 
@@ -98,3 +99,5 @@
 - `backend/` contains the Flask API and backend environment settings.
 - `frontend/` contains the Vite React app, its `package.json`, and its frontend `.env` file.
 - Run frontend commands from `frontend/` after the split.
+=======
+>>>>>>> c48aafc37cffa47ef6960224ef3da5bed9e64a7a
