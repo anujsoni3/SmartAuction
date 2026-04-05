@@ -86,48 +86,53 @@ export const UserWallet: React.FC = () => {
     {
       key: 'type',
       label: 'Transaction Type',
-      render: (value: string) => (
+      render: (value: unknown) => (
         <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${value === 'bid' ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'}`}>
-            {value === 'bid' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+          <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${String(value) === 'bid' ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'}`}>
+            {String(value) === 'bid' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
           </div>
-          <span className="font-medium text-slate-900">{value === 'bid' ? 'Bid Placed' : 'Funds Added'}</span>
+          <span className="font-medium text-slate-900">{String(value) === 'bid' ? 'Bid Placed' : 'Funds Added'}</span>
         </div>
       ),
     },
     {
       key: 'amount',
       label: 'Amount',
-      render: (value: number, row: Transaction) => (
+      render: (value: unknown, row: Transaction) => (
         <span className={`font-semibold ${row.type === 'bid' ? 'text-rose-700' : 'text-emerald-700'}`}>
-          {row.type === 'bid' ? '-' : '+'}₹{value.toLocaleString()}
+          {row.type === 'bid' ? '-' : '+'}₹{Number(value ?? 0).toLocaleString()}
         </span>
       ),
     },
     {
       key: 'timestamp',
       label: 'Date & Time',
-      render: (value: string) => (
+      render: (value: unknown) => (
         <div className="text-sm text-slate-600">
-          <div className="font-medium text-slate-900">{new Date(value).toLocaleDateString()}</div>
-          <div className="text-xs text-slate-500">{new Date(value).toLocaleTimeString()}</div>
+          <div className="font-medium text-slate-900">{new Date(String(value ?? '')).toLocaleDateString()}</div>
+          <div className="text-xs text-slate-500">{new Date(String(value ?? '')).toLocaleTimeString()}</div>
         </div>
       ),
     },
     {
       key: 'meta',
       label: 'Description',
-      render: (value: Transaction['meta'], row: Transaction) => (
+      render: (value: unknown, row: Transaction) => (
+        (() => {
+          const meta = value as Transaction['meta'];
+          return (
         <div className="text-sm text-slate-600">
           <div className="font-medium text-slate-900">
-            {value?.notes || (row.type === 'bid' ? 'Bid placed on auction' : 'Wallet top-up')}
+            {meta?.notes || (row.type === 'bid' ? 'Bid placed on auction' : 'Wallet top-up')}
           </div>
-          {value?.product_id ? (
+          {meta?.product_id ? (
             <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
-              Product: {value.product_id}
+              Product: {meta.product_id}
             </span>
           ) : null}
         </div>
+          );
+        })()
       ),
     },
   ];

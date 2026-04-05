@@ -16,7 +16,6 @@ import {
   Home,
   Search,
   Timer,
-  TrendingUp,
   Wallet,
   ArrowRight,
   BadgeCheck,

@@ -18,7 +18,7 @@ import {
 import {
   Home, Gavel, Package, Settings,
   Plus, Edit, Trash2, CheckCircle, 
-  Award, ShoppingCart, Archive, 
+   ShoppingCart, Archive,
   AlertCircle, RefreshCw, Filter
 } from 'lucide-react';
 
@@ -172,35 +172,38 @@ export const AdminProducts: React.FC = () => {
     { 
       key: 'id',   
       label: 'ID',   
-      render: (v: string) => (
+      render: (v: unknown) => (
         <span className="font-mono text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-sm">
-          {v}
+          {String(v ?? '-')}
         </span>
       )
     },
     { 
       key: 'name', 
       label: 'Name', 
-      render: (v: string) => (
-        <span className="font-semibold text-slate-800">{v}</span>
+      render: (v: unknown) => (
+        <span className="font-semibold text-slate-800">{String(v ?? '-')}</span>
       )
     },
     { 
       key: 'description', 
       label: 'Description',
-      render: (v: string) => (
-        <span className="text-slate-600 text-sm">{v}</span>
+      render: (v: unknown) => (
+        <span className="text-slate-600 text-sm">{String(v ?? '-')}</span>
       )
     },
     {
       key: 'status',
       label: 'Status',
-      render: (v: string) => (
+      render: (v: unknown) => (
+        (() => {
+          const status = String(v ?? '');
+          return (
         <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1
-          ${v === 'sold' 
+          ${status === 'sold' 
             ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300' 
             : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'}`}>
-          {v === 'sold' ? (
+          {status === 'sold' ? (
             <>
               <Archive className="h-3 w-3" />
               Sold
@@ -212,6 +215,8 @@ export const AdminProducts: React.FC = () => {
             </>
           )}
         </span>
+          );
+        })()
       ),
     },
     {

@@ -91,13 +91,13 @@ export const UserBids: React.FC = () => {
     {
       key: 'product_name',
       label: 'Product',
-      render: (value: string, row: Bid) => (
+      render: (value: unknown, row: Bid) => (
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
             <Target className="h-4 w-4" />
           </div>
           <div>
-            <div className="font-semibold text-slate-900">{value}</div>
+            <div className="font-semibold text-slate-900">{String(value ?? '-')}</div>
             <div className="text-xs text-slate-500">ID: {row.product_id}</div>
           </div>
         </div>
@@ -106,39 +106,40 @@ export const UserBids: React.FC = () => {
     {
       key: 'auction_id',
       label: 'Auction',
-      render: (value: string) => (
+      render: (value: unknown) => (
         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-          {value}
+          {String(value ?? '-')}
         </span>
       ),
     },
     {
       key: 'amount',
       label: 'Bid Amount',
-      render: (value: number) => (
+      render: (value: unknown) => (
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
             <TrendingUp className="h-3.5 w-3.5" />
           </div>
-          <span className="font-semibold text-emerald-700">₹{value?.toLocaleString()}</span>
+          <span className="font-semibold text-emerald-700">₹{Number(value ?? 0).toLocaleString()}</span>
         </div>
       ),
     },
     {
       key: 'timestamp',
       label: 'Date & Time',
-      render: (value: string) => (
+      render: (value: unknown) => (
         <div className="text-sm text-slate-600">
-          <div className="font-medium text-slate-900">{new Date(value).toLocaleDateString()}</div>
-          <div className="text-xs text-slate-500">{new Date(value).toLocaleTimeString()}</div>
+          <div className="font-medium text-slate-900">{new Date(String(value ?? '')).toLocaleDateString()}</div>
+          <div className="text-xs text-slate-500">{new Date(String(value ?? '')).toLocaleTimeString()}</div>
         </div>
       ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (value: string) => {
-        const config = statusConfig[value] ?? statusConfig.failed;
+      render: (value: unknown) => {
+        const status = String(value ?? 'failed');
+        const config = statusConfig[status] ?? statusConfig.failed;
         const Icon = config.icon;
         return (
           <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${config.className}`}>
