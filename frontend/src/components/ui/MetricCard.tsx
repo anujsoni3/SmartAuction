@@ -1,41 +1,55 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
-import { Card } from './Card';
 
 interface MetricCardProps {
   label: string;
   value: number | string;
   icon: LucideIcon;
-  tone?: 'brand' | 'success' | 'warning' | 'danger' | 'neutral';
+  tone?: 'brand' | 'success' | 'warning' | 'danger' | 'neutral' | 'accent';
   description?: string;
+  change?: { value: string; positive: boolean };
   className?: string;
 }
 
-const toneStyles: Record<NonNullable<MetricCardProps['tone']>, { icon: string; badge: string; value: string }> = {
+const toneConfig: Record<
+  NonNullable<MetricCardProps['tone']>,
+  { iconBg: string; iconColor: string; valueColor: string; labelColor: string }
+> = {
   brand: {
-    icon: 'bg-brand-50 text-brand-700 ring-1 ring-brand-100',
-    badge: 'text-brand-600',
-    value: 'text-brand-700',
+    iconBg: 'var(--app-primary-soft)',
+    iconColor: 'var(--app-primary)',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
   },
   success: {
-    icon: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
-    badge: 'text-emerald-600',
-    value: 'text-emerald-700',
+    iconBg: 'rgba(0, 208, 156, 0.12)',
+    iconColor: '#00D09C',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
   },
   warning: {
-    icon: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
-    badge: 'text-amber-600',
-    value: 'text-amber-700',
+    iconBg: 'rgba(245, 158, 11, 0.1)',
+    iconColor: '#d97706',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
   },
   danger: {
-    icon: 'bg-rose-50 text-rose-700 ring-1 ring-rose-100',
-    badge: 'text-rose-600',
-    value: 'text-rose-700',
+    iconBg: 'rgba(239, 68, 68, 0.1)',
+    iconColor: '#dc2626',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
   },
   neutral: {
-    icon: 'bg-slate-50 text-slate-700 ring-1 ring-slate-200',
-    badge: 'text-slate-500',
-    value: 'text-slate-900',
+    iconBg: 'var(--app-panel)',
+    iconColor: 'var(--app-muted)',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
+  },
+  accent: {
+    iconBg: 'rgba(59, 130, 246, 0.1)',
+    iconColor: '#3B82F6',
+    valueColor: 'var(--app-text)',
+    labelColor: 'var(--app-muted)',
   },
 };
 
@@ -45,22 +59,49 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   icon: Icon,
   tone = 'brand',
   description,
+  change,
   className = '',
 }) => {
-  const styles = toneStyles[tone];
+  const cfg = toneConfig[tone];
 
   return (
-    <Card className={`h-full ${className}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className={`text-sm font-medium ${styles.badge}`}>{label}</p>
-          <p className={`mt-2 text-2xl font-semibold tracking-tight ${styles.value}`}>{value}</p>
-          {description ? <p className="mt-2 text-sm text-slate-500">{description}</p> : null}
+    <div
+      className={`sa-card theme-transition p-5 ${className}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-wider" style={{ color: cfg.labelColor }}>
+            {label}
+          </p>
+          <p
+            className="mt-2 text-2xl font-bold tracking-tight"
+            style={{ color: cfg.valueColor }}
+          >
+            {value}
+          </p>
+          {description && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--app-muted)' }}>
+              {description}
+            </p>
+          )}
+          {change && (
+            <p
+              className={`mt-1.5 flex items-center gap-1 text-xs font-semibold ${
+                change.positive ? 'text-brand-500' : 'text-danger-500'
+              }`}
+            >
+              <span>{change.positive ? '↑' : '↓'}</span>
+              {change.value}
+            </p>
+          )}
         </div>
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${styles.icon}`}>
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: cfg.iconBg, color: cfg.iconColor }}
+        >
           <Icon className="h-5 w-5" />
         </div>
       </div>
-    </Card>
+    </div>
   );
 };

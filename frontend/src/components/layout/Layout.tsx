@@ -1,10 +1,9 @@
 import React from 'react';
-import { Header } from './Header';
-import { Sidebar } from './Sidebar';
+import { Navbar } from './Navbar';
 
 interface LayoutProps {
   children: React.ReactNode;
-  title: string;
+  title?: string;  // accepted but unused — Navbar handles page title display
   sidebarItems: Array<{
     path: string;
     label: string;
@@ -15,21 +14,22 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
-  title,
   sidebarItems,
-  sidebarTitle
+  sidebarTitle,
 }) => {
   return (
-    <div className="theme-bg theme-transition flex min-h-screen">
-      <Sidebar items={sidebarItems} title={sidebarTitle} />
-      <div className="theme-transition flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header title={title} />
-        <main className="scrollbar-thin theme-transition flex-1 overflow-auto px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-          <div className="mx-auto w-full max-w-[1600px]">
+    <div
+      className="theme-transition flex min-h-screen flex-col"
+      style={{ backgroundColor: 'var(--app-bg)' }}
+    >
+      <Navbar items={sidebarItems} portalLabel={sidebarTitle} />
+      <main className="scrollbar-thin flex-1 overflow-auto">
+        <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="animate-fade-in">
             {children}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

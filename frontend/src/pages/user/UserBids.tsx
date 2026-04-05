@@ -26,9 +26,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-const userSidebarItems = [
+const userNavItems = [
   { path: '/user/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
-  { path: '/user/auctions', label: 'Browse Auctions', icon: <Search className="h-4 w-4" /> },
+  { path: '/user/auctions', label: 'Auctions', icon: <Search className="h-4 w-4" /> },
   { path: '/user/bids', label: 'My Bids', icon: <Gavel className="h-4 w-4" /> },
   { path: '/user/wallet', label: 'Wallet', icon: <Wallet className="h-4 w-4" /> },
 ];
@@ -174,21 +174,19 @@ export const UserBids: React.FC = () => {
     },
   ];
 
-  if (loading) {
-    return (
-      <Layout title="My Bids" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
-        <div className="flex min-h-[55vh] items-center justify-center">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-card">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <span className="text-sm font-medium text-slate-600">Loading bids...</span>
-          </div>
+  if (loading) return (
+    <Layout sidebarItems={userNavItems} sidebarTitle="User">
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full" style={{ border: '3px solid var(--app-border)', borderTopColor: 'var(--app-primary)' }} />
+          <p className="text-sm font-medium" style={{ color: 'var(--app-muted)' }}>Loading bids…</p>
         </div>
-      </Layout>
-    );
-  }
+      </div>
+    </Layout>
+  );
 
   return (
-    <Layout title="My Bids" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
+    <Layout sidebarItems={userNavItems} sidebarTitle="User">
       <div className="space-y-6">
         <Card padding="lg" className="overflow-hidden border-0 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 text-white shadow-soft">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">

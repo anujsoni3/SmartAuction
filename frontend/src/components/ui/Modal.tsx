@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -7,41 +7,112 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  subtitle?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
   title,
+  subtitle,
   children,
-  size = 'md'
+  size = 'md',
 }) => {
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
+  const sizeMap = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-xl',
+    xl: 'max-w-3xl',
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
-        <div className={`theme-surface theme-border theme-transition relative w-full ${sizeClasses[size]} max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl border shadow-soft`}>
-          <div className="theme-border flex items-center justify-between border-b px-5 py-4 sm:px-6">
-            <h3 className="theme-text text-lg font-semibold tracking-tight">{title}</h3>
-            <button
-              onClick={onClose}
-              className="theme-transition rounded-full p-2 theme-muted hover:bg-[var(--app-panel)] hover:text-[var(--app-text)]"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 animate-fade-in"
+        style={{ backgroundColor: 'var(--app-overlay)', backdropFilter: 'blur(6px)' }}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div
+        className={[
+          'relative w-full animate-slide-up',
+          sizeMap[size],
+          'max-h-[calc(100dvh-2rem)] overflow-hidden',
+          'rounded-2xl shadow-soft',
+          'flex flex-col',
+        ].join(' ')}
+        style={{
+          backgroundColor: 'var(--app-surface)',
+          border: '1px solid var(--app-border)',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex shrink-0 items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--app-border)' }}
+        >
+          <div>
+            <h3
+              id="modal-title"
+              className="text-base font-semibold tracking-tight"
+              style={{ color: 'var(--app-text)' }}
             >
-              <X className="h-5 w-5" />
-            </button>
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="mt-0.5 text-sm" style={{ color: 'var(--app-muted)' }}>
+                {subtitle}
+              </p>
+            )}
           </div>
-          <div className="max-h-[calc(100vh-8rem)] overflow-y-auto px-5 py-5 sm:px-6">
-            {children}
-          </div>
+          <button
+            onClick={onClose}
+            className="theme-transition ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              color: 'var(--app-muted)',
+              backgroundColor: 'transparent',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--app-panel)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--app-text)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--app-muted)';
+            }}
+            aria-label="Close modal"
+          >
+            <X className="h-4.5 w-4.5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="scrollbar-thin flex-1 overflow-y-auto px-6 py-5">
+          {children}
         </div>
       </div>
     </div>

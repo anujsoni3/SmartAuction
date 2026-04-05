@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LucideIcon } from 'lucide-react';
-import { Card } from '../ui/Card';
+import { ArrowLeft, LucideIcon, CheckCircle2 } from 'lucide-react';
+import { Gavel } from 'lucide-react';
 
 interface AuthShellProps {
   title: string;
@@ -14,6 +14,13 @@ interface AuthShellProps {
   children: React.ReactNode;
 }
 
+const perks = [
+  'Real-time auction updates',
+  'Secure encrypted wallet',
+  'Instant bid confirmation',
+  'Full transaction history',
+];
+
 export const AuthShell: React.FC<AuthShellProps> = ({
   title,
   subtitle,
@@ -24,64 +31,118 @@ export const AuthShell: React.FC<AuthShellProps> = ({
   switchTo,
   children,
 }) => {
-  const accentClasses =
-    accent === 'admin'
-      ? 'from-[#8C5A3C] via-[#C08552] to-[#4B2E2B]'
-      : 'from-brand-600 via-brand-500 to-[#8C5A3C]';
+  const isAdmin = accent === 'admin';
+  const panelColor = isAdmin ? '#3B82F6' : '#00D09C';
+  const panelGrad = isAdmin
+    ? 'linear-gradient(145deg, #1d4ed8 0%, #3B82F6 50%, #1e40af 100%)'
+    : 'linear-gradient(145deg, #009e72 0%, #00D09C 50%, #00b886 100%)';
 
   return (
-    <div className="theme-bg theme-transition relative min-h-screen overflow-hidden p-4 sm:p-6 lg:p-8">
-      <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute -left-24 -top-16 h-72 w-72 rounded-full bg-[var(--app-panel)] blur-3xl" />
-        <div className="absolute -right-28 bottom-10 h-80 w-80 rounded-full bg-[var(--app-primary)]/25 blur-3xl" />
+    <div
+      className="theme-transition relative min-h-screen"
+      style={{ backgroundColor: 'var(--app-bg)' }}
+    >
+      {/* Background atmospheric orbs */}
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <div
+          className="absolute -top-40 -left-20 h-80 w-80 rounded-full opacity-20 blur-[80px]"
+          style={{ backgroundColor: panelColor }}
+        />
+        <div
+          className="absolute bottom-0 right-0 h-64 w-64 rounded-full opacity-10 blur-[60px]"
+          style={{ backgroundColor: panelColor }}
+        />
       </div>
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-6xl items-center justify-center lg:min-h-[calc(100vh-4rem)]">
-        <div className="grid w-full overflow-hidden rounded-3xl border theme-border shadow-soft lg:grid-cols-[1fr_1fr]">
-          <div className={`relative hidden flex-col justify-between bg-gradient-to-br ${accentClasses} p-10 text-white lg:flex`}>
-            <div>
-              <Link to="/" className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-medium backdrop-blur hover:bg-white/20">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Home
-              </Link>
+      <div className="relative flex min-h-screen flex-col lg:flex-row">
+        {/* ── Left Brand Panel (desktop only) ── */}
+        <div
+          className="hidden flex-col justify-between p-10 lg:flex lg:w-[44%] xl:w-[40%]"
+          style={{ background: panelGrad }}
+        >
+          {/* Top */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+              <Gavel className="h-4 w-4 text-white" />
             </div>
+            <span className="text-sm font-bold text-white">SmartAuction</span>
+          </div>
 
-            <div className="space-y-5">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30">
-                <Icon className="h-7 w-7" />
-              </div>
-              <h1 className="text-4xl font-semibold tracking-tight">{title}</h1>
-              <p className="max-w-sm text-base leading-7 text-white/85">{subtitle}</p>
-              <div className="space-y-2 text-sm text-white/80">
-                <p>Real-time updates</p>
-                <p>Secure wallet flow</p>
-                <p>Professional bidding interface</p>
-              </div>
+          {/* Middle */}
+          <div className="space-y-6">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <Icon className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold leading-tight text-white">{title}</h1>
+              <p className="mt-3 max-w-xs text-sm leading-6 text-white/75">{subtitle}</p>
+            </div>
+            <ul className="space-y-3">
+              {perks.map((perk) => (
+                <li key={perk} className="flex items-center gap-2.5 text-sm text-white/85">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-white/60" />
+                  {perk}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Bottom */}
+          <p className="text-xs text-white/50">
+            © {new Date().getFullYear()} SmartAuction. Secured & Encrypted.
+          </p>
+        </div>
+
+        {/* ── Right Form Panel ── */}
+        <div
+          className="flex flex-1 flex-col justify-center px-4 py-10 sm:px-8 lg:px-12 xl:px-16"
+          style={{ backgroundColor: 'var(--app-surface)' }}
+        >
+          {/* Mobile back + logo */}
+          <div className="mb-8 flex items-center justify-between lg:hidden">
+            <Link
+              to="/"
+              className="theme-transition flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium"
+              style={{ color: 'var(--app-muted)', backgroundColor: 'var(--app-panel)' }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-xl"
+              style={{ background: panelGrad }}
+            >
+              <Icon className="h-5 w-5 text-white" />
             </div>
           </div>
 
-          <Card className="theme-surface theme-transition m-0 rounded-none border-0 p-0" padding="lg">
-            <div className="mx-auto w-full max-w-md py-2">
-              <div className="mb-6 flex items-center justify-between lg:hidden">
-                <Link to="/" className="theme-muted inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm hover:theme-text">
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Link>
-                <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${accentClasses} text-white shadow-lg`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
+          {/* Desktop back link */}
+          <Link
+            to="/"
+            className="theme-transition mb-8 hidden items-center gap-1.5 text-xs font-medium lg:flex"
+            style={{ color: 'var(--app-muted)' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to home
+          </Link>
 
-              {children}
+          <div className="mx-auto w-full max-w-sm">
+            {children}
 
-              <div className="theme-muted mt-6 text-center text-sm">
-                {switchText}{' '}
-                <Link to={switchTo} className="font-semibold text-[var(--app-primary-strong)] hover:underline">
-                  {switchLinkText}
-                </Link>
-              </div>
+            <div className="mt-6 text-center text-sm" style={{ color: 'var(--app-muted)' }}>
+              {switchText}{' '}
+              <Link
+                to={switchTo}
+                className="font-semibold"
+                style={{ color: panelColor }}
+              >
+                {switchLinkText}
+              </Link>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

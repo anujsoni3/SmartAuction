@@ -19,11 +19,12 @@ import {
   Wallet,
   ArrowRight,
   BadgeCheck,
+  Zap,
 } from 'lucide-react';
 
-const userSidebarItems = [
+const userNavItems = [
   { path: '/user/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
-  { path: '/user/auctions', label: 'Browse Auctions', icon: <Search className="h-4 w-4" /> },
+  { path: '/user/auctions', label: 'Auctions', icon: <Search className="h-4 w-4" /> },
   { path: '/user/bids', label: 'My Bids', icon: <Gavel className="h-4 w-4" /> },
   { path: '/user/wallet', label: 'Wallet', icon: <Wallet className="h-4 w-4" /> },
 ];
@@ -53,60 +54,44 @@ export const UserAuctions: React.FC = () => {
           auctionService.getAuctions(),
           authService.getMyAuctions(),
         ]);
-
         setAuctions(allAuctions);
         setRegisteredAuctions(new Set((myAuctionRes?.user_details?.auctions || []).map(String)));
-        setTimeLeft(
-          allAuctions.reduce<Record<string, number>>((acc, auction) => {
-            acc[auction.id] = getSecondsLeft(auction.valid_until);
-            return acc;
-          }, {})
-        );
+        setTimeLeft(allAuctions.reduce<Record<string, number>>((acc, a) => {
+          acc[a.id] = getSecondsLeft(a.valid_until);
+          return acc;
+        }, {}));
       } catch {
         showError('Failed to load auctions');
       } finally {
         setLoading(false);
       }
     };
-
     void loadAuctions();
   }, [showError]);
 
   useEffect(() => {
     if (!auctions.length) return;
-
     const timer = window.setInterval(() => {
       const now = Date.now();
-      setTimeLeft(
-        auctions.reduce<Record<string, number>>((acc, auction) => {
-          acc[auction.id] = Math.max(0, Math.floor((new Date(auction.valid_until).getTime() - now) / 1000));
-          return acc;
-        }, {})
-      );
+      setTimeLeft(auctions.reduce<Record<string, number>>((acc, a) => {
+        acc[a.id] = Math.max(0, Math.floor((new Date(a.valid_until).getTime() - now) / 1000));
+        return acc;
+      }, {}));
     }, 1000);
-
     return () => window.clearInterval(timer);
   }, [auctions]);
 
-  const filteredAuctions = useMemo(() => {
-    return auctions.filter((auction) => {
-      const query = searchTerm.toLowerCase();
-      return auction.name.toLowerCase().includes(query) || auction.id.toLowerCase().includes(query);
-    });
-  }, [auctions, searchTerm]);
+  const filteredAuctions = useMemo(() =>
+    auctions.filter((a) => {
+      const q = searchTerm.toLowerCase();
+      return a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q);
+    }), [auctions, searchTerm]);
 
-  const activeCount = useMemo(
-    () => auctions.filter((auction) => getSecondsLeft(auction.valid_until) > 0).length,
-    [auctions]
-  );
-
-  const endingSoonCount = useMemo(
-    () => auctions.filter((auction) => {
-      const diff = new Date(auction.valid_until).getTime() - Date.now();
-      return diff > 0 && diff < 86_400_000;
-    }).length,
-    [auctions]
-  );
+  const activeCount = useMemo(() => auctions.filter((a) => getSecondsLeft(a.valid_until) > 0).length, [auctions]);
+  const endingSoonCount = useMemo(() => auctions.filter((a) => {
+    const d = new Date(a.valid_until).getTime() - Date.now();
+    return d > 0 && d < 86_400_000;
+  }).length, [auctions]);
 
   const handleViewProducts = async (auction: Auction) => {
     setSelectedAuction(auction);
@@ -114,18 +99,10 @@ export const UserAuctions: React.FC = () => {
     try {
       const data = await auctionService.getAuctionProducts(auction.id);
       setProducts(data);
-
-      const bids = await Promise.all(
-        data.map(async (product) => {
-          try {
-            const highest = await auctionService.getHighestBid(product.id);
-            return [product.id, highest] as const;
-          } catch {
-            return [product.id, { highest_bid: 0 }] as const;
-          }
-        })
-      );
-
+      const bids = await Promise.all(data.map(async (p) => {
+        try { return [p.id, await auctionService.getHighestBid(p.id)] as const; }
+        catch { return [p.id, { highest_bid: 0 }] as const; }
+      }));
       setProductBids(Object.fromEntries(bids));
     } catch {
       showError('Failed to load products');
@@ -134,7 +111,7 @@ export const UserAuctions: React.FC = () => {
     }
   };
 
-  const handleRegisterForAuction = async (auctionId: string) => {
+  const handleRegister = async (auctionId: string) => {
     try {
       await auctionService.registerForAuction(auctionId);
       showSuccess('Successfully registered for auction');
@@ -145,33 +122,18 @@ export const UserAuctions: React.FC = () => {
   };
 
   const handlePlaceBid = async () => {
-    if (!selectedProduct || !bidAmount || !user) {
-      showError('Please enter a valid bid amount');
-      return;
-    }
-
+    if (!selectedProduct || !bidAmount || !user) { showError('Please enter a valid bid amount'); return; }
     const amount = Number.parseFloat(bidAmount);
     const currentHighest = productBids[selectedProduct.id]?.highest_bid ?? 0;
-
     if (Number.isNaN(amount) || amount <= currentHighest) {
-      showError(`Bid must be higher than ₹${currentHighest}`);
-      return;
+      showError(`Bid must be higher than ₹${currentHighest}`); return;
     }
-
     setBidLoading(true);
     try {
-      await auctionService.placeBid({
-        product_name: selectedProduct.name,
-        bid_amount: amount,
-        user_id: user.username,
-      });
-      showSuccess('Bid placed successfully');
-      setShowBidModal(false);
-      setBidAmount('');
-      setSelectedProduct(null);
-      if (selectedAuction) {
-        await handleViewProducts(selectedAuction);
-      }
+      await auctionService.placeBid({ product_name: selectedProduct.name, bid_amount: amount, user_id: user.username });
+      showSuccess('Bid placed successfully!');
+      setShowBidModal(false); setBidAmount(''); setSelectedProduct(null);
+      if (selectedAuction) await handleViewProducts(selectedAuction);
     } catch {
       showError('Failed to place bid');
     } finally {
@@ -179,66 +141,72 @@ export const UserAuctions: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Layout title="Browse Auctions" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
-        <div className="flex min-h-[55vh] items-center justify-center">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-card">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <span className="text-sm font-medium text-slate-600">Loading auctions...</span>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  if (loading) return (
+    <Layout sidebarItems={userNavItems} sidebarTitle="User">
+      <PageLoader />
+    </Layout>
+  );
+
+  const currentHighest = selectedProduct ? (productBids[selectedProduct.id]?.highest_bid ?? 0) : 0;
 
   return (
-    <Layout title="Browse Auctions" sidebarItems={userSidebarItems} sidebarTitle="User Portal">
+    <Layout sidebarItems={userNavItems} sidebarTitle="User">
       <div className="space-y-6">
-        <Card padding="lg" className="space-y-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
-                <BadgeCheck className="h-3.5 w-3.5" />
-                Live auction discovery
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Browse auctions with a cleaner, faster workflow</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Search active auctions, inspect products, and register before bidding.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[44rem] xl:grid-cols-3">
-              <MetricCard label="Active" value={activeCount} icon={Gavel} tone="brand" />
-              <MetricCard label="Ending Soon" value={endingSoonCount} icon={Timer} tone="warning" />
-              <MetricCard label="Registered" value={registeredAuctions.size} icon={Eye} tone="success" />
-            </div>
+        {/* Header strip */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--app-text)' }}>
+              Browse Auctions
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: 'var(--app-muted)' }}>
+              Discover live auctions, register, and place your bids.
+            </p>
           </div>
+          <span
+            className="inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-xs font-semibold sm:self-auto"
+            style={{ backgroundColor: 'var(--app-primary-soft)', color: 'var(--app-primary)' }}
+          >
+            <BadgeCheck className="h-3.5 w-3.5" />
+            Live Auction Discovery
+          </span>
+        </div>
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:flex-row">
-            <div className="flex-1">
-              <Input
-                placeholder="Search auctions by name or ID"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
-            <Button variant="secondary" className="shrink-0" onClick={() => setSearchTerm('')}>
-              <Search className="h-4 w-4" />
-              Clear
-            </Button>
+        {/* Metrics */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MetricCard label="Active" value={activeCount} icon={Zap} tone="brand" />
+          <MetricCard label="Ending Soon" value={endingSoonCount} icon={Timer} tone="warning" />
+          <MetricCard label="Registered" value={registeredAuctions.size} icon={Eye} tone="success" />
+        </div>
+
+        {/* Search bar */}
+        <div
+          className="flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center"
+          style={{ backgroundColor: 'var(--app-surface)', border: '1px solid var(--app-border)' }}
+        >
+          <div className="flex-1">
+            <Input
+              placeholder="Search auctions by name or ID…"
+              icon={<Search className="h-4 w-4" />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </Card>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setSearchTerm('')}>
+            Clear
+          </Button>
+        </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <div>
-                <h3 className="text-lg font-semibold tracking-tight text-slate-900">Active Auctions</h3>
-                <p className="text-sm text-slate-500">{filteredAuctions.length} auction{filteredAuctions.length === 1 ? '' : 's'} visible</p>
-              </div>
+        {/* Main grid */}
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          {/* Left — Auction list */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-0.5">
+              <p className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>
+                Active Auctions
+              </p>
+              <p className="text-xs" style={{ color: 'var(--app-muted)' }}>
+                {filteredAuctions.length} result{filteredAuctions.length !== 1 ? 's' : ''}
+              </p>
             </div>
 
             {filteredAuctions.length === 0 ? (
@@ -246,120 +214,182 @@ export const UserAuctions: React.FC = () => {
                 <EmptyState title="No auctions found" description="Try a different search term or clear the filter." />
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {filteredAuctions.map((auction) => {
-                  const secondsLeft = timeLeft[auction.id] ?? getSecondsLeft(auction.valid_until);
-                  const ended = secondsLeft <= 0;
-                  const registered = registeredAuctions.has(auction.id);
+              filteredAuctions.map((auction) => {
+                const secondsLeft = timeLeft[auction.id] ?? getSecondsLeft(auction.valid_until);
+                const ended = secondsLeft <= 0;
+                const registered = registeredAuctions.has(auction.id);
 
-                  return (
-                    <Card key={auction.id} padding="lg" className="transition hover:-translate-y-0.5 hover:shadow-soft">
-                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <h4 className="truncate text-lg font-semibold tracking-tight text-slate-900">{auction.name}</h4>
-                              <p className="mt-1 text-sm text-slate-500">Auction ID: {auction.id}</p>
-                            </div>
-                            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${ended ? 'bg-rose-50 text-rose-700' : secondsLeft < 3600 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {ended ? 'Ended' : 'Live'}
-                            </span>
+                return (
+                  <Card key={auction.id} padding="lg" hoverable>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-base font-bold" style={{ color: 'var(--app-text)' }}>
+                              {auction.name}
+                            </h3>
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--app-muted)' }}>
+                              ID: {auction.id}
+                            </p>
                           </div>
-
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                              <Clock className="h-3.5 w-3.5" />
-                              Ends {new Date(auction.valid_until).toLocaleString()}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                              <Timer className="h-3.5 w-3.5" />
-                              {formatTimeLeft(secondsLeft)} remaining
-                            </span>
-                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+                              ended
+                                ? 'bg-red-50 text-red-600'
+                                : secondsLeft < 3600
+                                ? 'bg-amber-50 text-amber-700'
+                                : ''
+                            }`}
+                            style={!ended && secondsLeft >= 3600 ? {
+                              backgroundColor: 'var(--app-primary-soft)',
+                              color: 'var(--app-primary)',
+                            } : {}}
+                          >
+                            {ended ? 'Ended' : secondsLeft < 3600 ? '⚡ Hot' : '🟢 Live'}
+                          </span>
                         </div>
 
-                        <div className="flex flex-col gap-3 lg:min-w-[12rem] lg:items-end">
-                          <Button size="sm" variant="secondary" onClick={() => handleViewProducts(auction)} className="w-full justify-center lg:w-auto">
-                            <Eye className="h-4 w-4" />
-                            View Products
-                          </Button>
-                          {registered ? (
-                            <span className="inline-flex items-center justify-center rounded-full bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
-                              Registered
-                            </span>
-                          ) : (
-                            <Button size="sm" onClick={() => handleRegisterForAuction(auction.id)} disabled={ended} className="w-full justify-center lg:w-auto">
-                              Register
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
-                          )}
+                        <div className="flex flex-wrap gap-2">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
+                            style={{ backgroundColor: 'var(--app-panel)', color: 'var(--app-muted)' }}
+                          >
+                            <Clock className="h-3 w-3" />
+                            Ends {new Date(auction.valid_until).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold"
+                            style={{
+                              backgroundColor: ended ? 'rgba(239,68,68,0.1)' : 'var(--app-primary-soft)',
+                              color: ended ? '#dc2626' : 'var(--app-primary)',
+                            }}
+                          >
+                            <Timer className="h-3 w-3" />
+                            {formatTimeLeft(secondsLeft)}
+                          </span>
                         </div>
                       </div>
-                    </Card>
-                  );
-                })}
-              </div>
+
+                      <div className="flex flex-row gap-2 sm:flex-col sm:items-end">
+                        <Button size="sm" variant="secondary" onClick={() => handleViewProducts(auction)}>
+                          <Eye className="h-3.5 w-3.5" />
+                          Products
+                        </Button>
+                        {registered ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                            style={{ backgroundColor: 'var(--app-primary-soft)', color: 'var(--app-primary)' }}
+                          >
+                            <BadgeCheck className="h-3.5 w-3.5" />
+                            Registered
+                          </span>
+                        ) : (
+                          <Button size="sm" onClick={() => handleRegister(auction.id)} disabled={ended}>
+                            Register
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
             )}
           </div>
 
-          <div className="lg:sticky lg:top-24 self-start">
-            <Card padding="lg" className="space-y-5">
-              <div className="flex items-center justify-between gap-4">
+          {/* Right — Product panel */}
+          <div className="lg:sticky lg:top-[4.5rem] self-start">
+            <Card padding="lg" className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">
+                  <h3 className="text-base font-bold" style={{ color: 'var(--app-text)' }}>
                     {selectedAuction ? selectedAuction.name : 'Select an auction'}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">Product list and bid actions appear here.</p>
+                  <p className="mt-0.5 text-xs" style={{ color: 'var(--app-muted)' }}>
+                    Products and bid actions appear here.
+                  </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 ring-1 ring-brand-100">
-                  <Gavel className="h-5 w-5" />
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: 'var(--app-primary-soft)', color: 'var(--app-primary)' }}
+                >
+                  <Gavel className="h-4 w-4" />
                 </div>
               </div>
 
               {!selectedAuction ? (
-                <EmptyState title="Nothing selected yet" description="Choose an auction to view its products and bid options." />
+                <EmptyState title="Nothing selected" description="Choose an auction from the list to see its products." />
               ) : productsLoading ? (
-                <Loader />
+                <div className="flex items-center justify-center py-12">
+                  <div
+                    className="h-8 w-8 animate-spin rounded-full"
+                    style={{ border: '2.5px solid var(--app-border)', borderTopColor: 'var(--app-primary)' }}
+                  />
+                </div>
               ) : products.length === 0 ? (
-                <EmptyState title="No products in this auction" description="This auction does not have any active products yet." />
+                <EmptyState title="No products yet" description="This auction doesn't have any products." />
               ) : (
                 <div className="space-y-3">
                   {products.map((product) => {
-                    const currentHighest = productBids[product.id]?.highest_bid ?? 0;
+                    const highestBid = productBids[product.id]?.highest_bid ?? 0;
                     const registered = registeredAuctions.has(selectedAuction.id);
                     const isEnded = (timeLeft[selectedAuction.id] ?? 0) <= 0;
+                    const isSold = product.status === 'sold';
 
                     return (
-                      <div key={product.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 transition hover:border-brand-200 hover:bg-white">
-                        <div className="flex items-start justify-between gap-4">
+                      <div
+                        key={product.id}
+                        className="theme-transition rounded-xl p-4"
+                        style={{
+                          backgroundColor: 'var(--app-panel)',
+                          border: '1px solid var(--app-border)',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h4 className="truncate font-semibold text-slate-900">{product.name}</h4>
-                            <p className="mt-1 text-xs text-slate-500">ID: {product.id}</p>
-                            {product.description ? <p className="mt-2 text-sm leading-6 text-slate-600">{product.description}</p> : null}
+                            <p className="truncate text-sm font-bold" style={{ color: 'var(--app-text)' }}>
+                              {product.name}
+                            </p>
+                            {product.description && (
+                              <p className="mt-1 text-xs leading-5" style={{ color: 'var(--app-muted)' }}>
+                                {product.description}
+                              </p>
+                            )}
                           </div>
-                          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${product.status === 'sold' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                            {product.status === 'sold' ? 'Sold' : 'Available'}
+                          <span
+                            className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={isSold
+                              ? { backgroundColor: 'rgba(239,68,68,0.1)', color: '#dc2626' }
+                              : { backgroundColor: 'rgba(0,208,156,0.1)', color: '#00D09C' }
+                            }
+                          >
+                            {isSold ? 'Sold' : 'Available'}
                           </span>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between gap-4 border-t border-slate-200 pt-4">
-                          <div className="text-sm text-slate-600">
-                            <span className="font-medium text-slate-900">Highest bid:</span> ₹{currentHighest.toLocaleString()}
+                        <div
+                          className="mt-3 flex items-center justify-between border-t pt-3"
+                          style={{ borderColor: 'var(--app-border)' }}
+                        >
+                          <div>
+                            <p className="text-xs" style={{ color: 'var(--app-muted)' }}>Highest bid</p>
+                            <p className="text-base font-extrabold" style={{ color: 'var(--app-primary)' }}>
+                              {highestBid > 0 ? `₹${highestBid.toLocaleString('en-IN')}` : 'No bids yet'}
+                            </p>
                           </div>
-
                           {registered ? (
                             <Button
                               size="sm"
-                              onClick={() => {
-                                setSelectedProduct(product);
-                                setShowBidModal(true);
-                              }}
-                              disabled={product.status === 'sold' || isEnded}
+                              disabled={isSold || isEnded}
+                              onClick={() => { setSelectedProduct(product); setShowBidModal(true); }}
                             >
+                              <Gavel className="h-3.5 w-3.5" />
                               Place Bid
                             </Button>
                           ) : (
-                            <span className="text-xs font-medium text-slate-500">Register to bid</span>
+                            <span className="text-xs font-medium" style={{ color: 'var(--app-muted)' }}>
+                              Register to bid
+                            </span>
                           )}
                         </div>
                       </div>
@@ -372,46 +402,70 @@ export const UserAuctions: React.FC = () => {
         </div>
       </div>
 
+      {/* Bid Modal */}
       <Modal
         isOpen={showBidModal}
-        onClose={() => {
-          setShowBidModal(false);
-          setBidAmount('');
-          setSelectedProduct(null);
-        }}
-        title={`Place Bid on ${selectedProduct?.name ?? 'Product'}`}
+        onClose={() => { setShowBidModal(false); setBidAmount(''); setSelectedProduct(null); }}
+        title="Place Your Bid"
+        subtitle={selectedProduct?.name}
       >
         <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <h4 className="font-semibold text-slate-900">{selectedProduct?.name}</h4>
-            <p className="mt-1 text-sm text-slate-500">ID: {selectedProduct?.id}</p>
-            <p className="mt-3 text-sm text-slate-600">
-              Current highest bid: <span className="font-semibold text-slate-900">₹{selectedProduct ? (productBids[selectedProduct.id]?.highest_bid ?? 0).toLocaleString() : '0'}</span>
+          {/* Product summary */}
+          <div
+            className="rounded-xl p-4"
+            style={{ backgroundColor: 'var(--app-panel)', border: '1px solid var(--app-border)' }}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm" style={{ color: 'var(--app-muted)' }}>Current highest bid</p>
+              <p className="text-xl font-extrabold" style={{ color: 'var(--app-primary)' }}>
+                {currentHighest > 0 ? `₹${currentHighest.toLocaleString('en-IN')}` : 'No bids yet'}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick bid buttons */}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--app-muted)' }}>
+              Quick bid
             </p>
+            <div className="flex flex-wrap gap-2">
+              {[50, 100, 250, 500].map((inc) => (
+                <button
+                  key={inc}
+                  type="button"
+                  onClick={() => setBidAmount(String(currentHighest + inc))}
+                  className="theme-transition rounded-lg px-3 py-1.5 text-sm font-semibold"
+                  style={{
+                    backgroundColor: 'var(--app-primary-soft)',
+                    color: 'var(--app-primary)',
+                    border: '1px solid rgba(0,208,156,0.2)',
+                  }}
+                >
+                  +{inc}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Input
-            label="Your bid amount"
+            label="Your bid amount (₹)"
             type="number"
             value={bidAmount}
-            onChange={(event) => setBidAmount(event.target.value)}
-            placeholder="Enter bid amount"
-            min={selectedProduct ? (productBids[selectedProduct.id]?.highest_bid ?? 0) + 1 : 1}
+            onChange={(e) => setBidAmount(e.target.value)}
+            placeholder={`Min: ₹${currentHighest + 1}`}
+            min={currentHighest + 1}
           />
 
           <div className="flex gap-3">
             <Button
               variant="secondary"
-              onClick={() => {
-                setShowBidModal(false);
-                setBidAmount('');
-                setSelectedProduct(null);
-              }}
+              onClick={() => { setShowBidModal(false); setBidAmount(''); setSelectedProduct(null); }}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button onClick={handlePlaceBid} loading={bidLoading} className="flex-1">
+              <Gavel className="h-4 w-4" />
               Place Bid
             </Button>
           </div>
@@ -422,18 +476,30 @@ export const UserAuctions: React.FC = () => {
 };
 
 const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
-  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
-    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+  <div
+    className="flex flex-col items-center justify-center rounded-xl py-12 text-center"
+    style={{ backgroundColor: 'var(--app-panel)', border: '1.5px dashed var(--app-border)' }}
+  >
+    <div
+      className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl"
+      style={{ backgroundColor: 'var(--app-surface)', color: 'var(--app-disabled)' }}
+    >
       <Gavel className="h-6 w-6" />
     </div>
-    <h4 className="mt-4 text-base font-semibold text-slate-900">{title}</h4>
-    <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
+    <p className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>{title}</p>
+    <p className="mt-1 max-w-[220px] text-xs" style={{ color: 'var(--app-muted)' }}>{description}</p>
   </div>
 );
 
-const Loader = () => (
-  <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-12">
-    <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
+const PageLoader: React.FC = () => (
+  <div className="flex min-h-[60vh] items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className="h-10 w-10 animate-spin rounded-full"
+        style={{ border: '3px solid var(--app-border)', borderTopColor: 'var(--app-primary)' }}
+      />
+      <p className="text-sm font-medium" style={{ color: 'var(--app-muted)' }}>Loading auctions…</p>
+    </div>
   </div>
 );
 
@@ -441,10 +507,10 @@ const getSecondsLeft = (iso: string) => Math.max(0, Math.floor((new Date(iso).ge
 
 const formatTimeLeft = (seconds: number) => {
   if (seconds <= 0) return 'Ended';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (days) return `${days}d ${hours}h ${minutes}m`;
-  if (hours) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
 };

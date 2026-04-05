@@ -4,19 +4,32 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 export const ThemeToggle: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      className="theme-surface theme-border theme-transition fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium theme-text shadow-card hover:translate-y-[-1px] sm:right-6 sm:top-5"
-      aria-label="Toggle light and dark mode"
-      title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      className="theme-transition relative inline-flex h-9 w-9 items-center justify-center rounded-xl"
+      style={{
+        backgroundColor: 'var(--app-panel)',
+        color: 'var(--app-muted)',
+        border: '1px solid var(--app-border)',
+      }}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--app-text)';
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--app-panel-hover)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--app-muted)';
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--app-panel)';
+      }}
     >
-      <span className="theme-transition inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-panel)]">
-        {theme === 'light' ? <MoonStar className="h-4 w-4" /> : <SunMedium className="h-4 w-4" />}
+      <span className="theme-transition">
+        {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
       </span>
-      <span className="hidden sm:inline">{theme === 'light' ? 'Dark' : 'Light'} Mode</span>
     </button>
   );
 };
